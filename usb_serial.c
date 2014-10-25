@@ -51,11 +51,11 @@
 #else
 #define VENDOR_ID       0x2341
 #define PRODUCT_ID      0x8041
-#define STR_SERIAL_NUMBER   L"ROMAAAA"
+#define STR_SERIAL_NUMBER   L"00"
 #endif
 
-#define STR_MANUFACTURER    L"ROMIX"
-#define STR_PRODUCT     L"USB Serial"
+#define STR_MANUFACTURER    L"Arduino"
+#define STR_PRODUCT     L"Arduino Yun"
 
 #define LSB(n) (n & 255)
 #define MSB(n) ((n >> 8) & 255)
@@ -121,35 +121,6 @@ static const uint8_t PROGMEM device_descriptor[] = {
     2,                  // iProduct
     3,                  // iSerialNumber
     1                   // bNumConfigurations
-};
-
-// If you're desperate for a little extra code memory, these strings
-// can be completely removed if iManufacturer, iProduct, iSerialNumber
-// in the device desciptor are changed to zeros.
-struct usb_string_descriptor_struct {
-    uint8_t bLength;
-    uint8_t bDescriptorType;
-    int16_t wString[];
-};
-static const struct usb_string_descriptor_struct PROGMEM string0 = {
-    4,
-    3,
-    {0x0409}
-};
-static const struct usb_string_descriptor_struct PROGMEM string1 = {
-    sizeof(STR_MANUFACTURER),
-    3,
-    STR_MANUFACTURER
-};
-static const struct usb_string_descriptor_struct PROGMEM string2 = {
-    sizeof(STR_PRODUCT),
-    3,
-    STR_PRODUCT
-};
-static const struct usb_string_descriptor_struct PROGMEM string3 = {
-    sizeof(STR_SERIAL_NUMBER),
-    3,
-    STR_SERIAL_NUMBER
 };
 
 #define CONFIG1_DESC_SIZE (9+9+5+5+4+5+7+9+7+7)
@@ -234,6 +205,35 @@ static const uint8_t PROGMEM endpoint_config_table[] = {
     1, EP_TYPE_INTERRUPT_IN,  EP_SIZE(CDC_ACM_SIZE) | CDC_ACM_BUFFER,
     1, EP_TYPE_BULK_OUT,      EP_SIZE(CDC_RX_SIZE) | CDC_RX_BUFFER,
     1, EP_TYPE_BULK_IN,       EP_SIZE(CDC_TX_SIZE) | CDC_TX_BUFFER
+};
+
+// If you're desperate for a little extra code memory, these strings
+// can be completely removed if iManufacturer, iProduct, iSerialNumber
+// in the device desciptor are changed to zeros.
+struct usb_string_descriptor_struct {
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+    int16_t wString[];
+};
+static const struct usb_string_descriptor_struct PROGMEM string0 = {
+    4,
+    3,
+    {0x0409}
+};
+static const struct usb_string_descriptor_struct PROGMEM string1 = {
+    sizeof(STR_MANUFACTURER),
+    3,
+    STR_MANUFACTURER
+};
+static const struct usb_string_descriptor_struct PROGMEM string2 = {
+    sizeof(STR_PRODUCT),
+    3,
+    STR_PRODUCT
+};
+static const struct usb_string_descriptor_struct PROGMEM string3 = {
+    sizeof(STR_SERIAL_NUMBER),
+    3,
+    STR_SERIAL_NUMBER
 };
 
 // This table defines which descriptor data is sent for each specific
