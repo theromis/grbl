@@ -49,8 +49,8 @@
 #define PRODUCT_ID      0x047A
 #define STR_SERIAL_NUMBER   L"12345"
 #else
-#define VENDOR_ID       0x0403
-#define PRODUCT_ID      0x2222
+#define VENDOR_ID       0x2341
+#define PRODUCT_ID      0x8041
 #define STR_SERIAL_NUMBER   L"ROMAAAA"
 #endif
 
@@ -492,21 +492,25 @@ ISR(USB_COM_vect)
         if (bRequest == GET_DESCRIPTOR) {
             list = (const uint8_t *)descriptor_list;
             for (i=0; ; i++) {
+
                 if (i >= NUM_DESC_LIST) {
                     UECONX = (1<<STALLRQ)|(1<<EPEN);  //stall
                     return;
                 }
+
                 desc_val = pgm_read_word(list);
                 if (desc_val != wValue) {
                     list += sizeof(struct descriptor_list_struct);
                     continue;
                 }
+
                 list += 2;
                 desc_val = pgm_read_word(list);
                 if (desc_val != wIndex) {
                     list += sizeof(struct descriptor_list_struct)-2;
                     continue;
                 }
+
                 list += 2;
                 desc_addr = (const uint8_t *)pgm_read_word(list);
                 list += 2;
