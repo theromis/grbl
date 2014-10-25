@@ -372,7 +372,7 @@ serial_read()
 
     intr_state = SREG;
     UENUM = CDC_RX_ENDPOINT;
-#if 1
+#if 0
     for (c = UEINTX; !(c & (1<<RWAL)); c = UEINTX) {
         if (!(c & (1<<RXOUTI))) {
             goto exit;
