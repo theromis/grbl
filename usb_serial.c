@@ -314,19 +314,22 @@ static uint8_t transmit_previous_timeout=0;
 #define TRANSMIT_TIMEOUT    25   /* in milliseconds */
 #define TRANSMIT_FLUSH_TIMEOUT  5   /* in milliseconds */
 
-// transmit a character.  0 returned on success, -1 on error
+// transmit a character.
 void
 serial_write(uint8_t c)
 {
     uint8_t timeout, intr_state;
 
     // if we're not online (enumerated and configured), error
-    if (!usb_configuration) return;
+    if (!usb_configuration)
+        return;
+
     // interrupts are disabled so these functions can be
     // used from the main program or interrupt context,
     // even both in the same program!
     intr_state = SREG;
     UENUM = CDC_TX_ENDPOINT;
+
     // if we gave up due to timeout before, don't wait again
     if (transmit_previous_timeout) {
         if (!(UEINTX & (1<<RWAL))) {
@@ -337,18 +340,22 @@ serial_write(uint8_t c)
     }
     // wait for the FIFO to be ready to accept data
     timeout = UDFNUML + TRANSMIT_TIMEOUT;
-    while (1) {
-        // are we ready to transmit?
-        if (UEINTX & (1<<RWAL)) break;
+
+    // while we ready to transmit
+    while (!(UEINTX & (1<<RWAL))) {
         SREG = intr_state;
+
         // have we waited too long?  This happens if the user
         // is not running an application that is listening
-        if (UDFNUML == timeout) {
+        if (UDFNUML >= timeout) {
             transmit_previous_timeout = 1;
             return;
         }
+
         // has the USB gone offline?
-        if (!usb_configuration) return;
+        if (!usb_configuration)
+            return;
+
         // get ready to try checking again
         intr_state = SREG;
         UENUM = CDC_TX_ENDPOINT;
@@ -356,7 +363,8 @@ serial_write(uint8_t c)
     // actually write the byte into the FIFO
     UEDATX = c;
     // if this completed a packet, transmit it now!
-    if (!(UEINTX & (1<<RWAL))) UEINTX = 0x3A;
+    if (!(UEINTX & (1<<RWAL)))
+        UEINTX = 0x3A;
     transmit_flush_timer = TRANSMIT_FLUSH_TIMEOUT;
     SREG = intr_state;
 }
@@ -365,33 +373,22 @@ serial_write(uint8_t c)
 uint8_t
 serial_read()
 {
-    uint8_t c, intr_state, ret = 0;
+    uint8_t intr_state, ret = 0;
+    volatile uint8_t c;
 
     if (!usb_configuration)
         return ret;
 
     intr_state = SREG;
     UENUM = CDC_RX_ENDPOINT;
-#if 0
-    for (c = UEINTX; !(c & (1<<RWAL)); c = UEINTX) {
-        if (!(c & (1<<RXOUTI))) {
+
+    while (!((c = UEINTX) & (1<<RWAL)) ) {
+        if (!(c & (1<<RXOUTI)))
             goto exit;
-        } 
+
         // no data in buffer
         UEINTX = 0x6B;
     }
-#else
-retry:
-    c = UEINTX;
-    if (!(c & (1<<RWAL))) {
-        // no data in buffer
-        if (c & (1<<RXOUTI)) {
-            UEINTX = 0x6B;
-            goto retry;
-        }
-        goto exit;
-    }
-#endif
 
     // take one byte out of the buffer
     ret = UEDATX;
