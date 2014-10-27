@@ -385,31 +385,9 @@
 
   #define UDR0 UDR1
 
-#if defined(__AVR_AT90USB162__)
-#define HW_CONFIG() 
-#define PLL_CONFIG() (PLLCSR = ((1<<PLLE)|(1<<PLLP0)))
-#define USB_CONFIG() (USBCON = (1<<USBE))
-#define USB_FREEZE() (USBCON = ((1<<USBE)|(1<<FRZCLK)))
-#elif defined(__AVR_ATmega32U4__)
-#define HW_CONFIG() (UHWCON = 0x01)
-#define PLL_CONFIG() (PLLCSR = 0x12)
-#define USB_CONFIG() (USBCON = ((1<<USBE)|(1<<OTGPADE)))
-#define USB_FREEZE() (USBCON = ((1<<USBE)|(1<<FRZCLK)))
-#elif defined(__AVR_AT90USB646__)
-#define HW_CONFIG() (UHWCON = 0x81)
-#define PLL_CONFIG() (PLLCSR = 0x1A)
-#define USB_CONFIG() (USBCON = ((1<<USBE)|(1<<OTGPADE)))
-#define USB_FREEZE() (USBCON = ((1<<USBE)|(1<<FRZCLK)))
-#elif defined(__AVR_AT90USB1286__)
-#define HW_CONFIG() (UHWCON = 0x81)
-#define PLL_CONFIG() (PLLCSR = 0x16)
-#define USB_CONFIG() (USBCON = ((1<<USBE)|(1<<OTGPADE)))
-#define USB_FREEZE() (USBCON = ((1<<USBE)|(1<<FRZCLK)))
-#endif  
-
   // Define serial port pins and interrupt vectors.
-  #define SERIAL_RX     USB_COM_vect
-  #define SERIAL_UDRE   USB_GEN_vect
+  #define SERIAL_RX     USART1_RX_vect
+  #define SERIAL_UDRE   USART1_UDRE_vect
 
   // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
   #define STEP_DDR        DDRD
