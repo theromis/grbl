@@ -238,20 +238,22 @@ static const struct usb_string_descriptor_struct PROGMEM string3 = {
 
 // This table defines which descriptor data is sent for each specific
 // request from the host (in wValue and wIndex).
-static const struct descriptor_list_struct {
+typedef struct _descriptor_list_struct {
     uint16_t    wValue;
     uint16_t    wIndex;
     const uint8_t   *addr;
     uint8_t     length;
-} PROGMEM descriptor_list[] = {
+} descriptor_list_struct_t;
+
+static const descriptor_list_struct_t PROGMEM descriptor_list[] = {
     {0x0100, 0x0000, device_descriptor, sizeof(device_descriptor)},
     {0x0200, 0x0000, config1_descriptor, sizeof(config1_descriptor)},
     {0x0300, 0x0000, (const uint8_t *)&string0, 4},
     {0x0301, 0x0409, (const uint8_t *)&string1, sizeof(STR_MANUFACTURER)},
     {0x0302, 0x0409, (const uint8_t *)&string2, sizeof(STR_PRODUCT)},
-    {0x0303, 0x0409, (const uint8_t *)&string3, sizeof(STR_SERIAL_NUMBER)}
+    {0x0303, 0x0409, (const uint8_t *)&string3, sizeof(STR_SERIAL_NUMBER)},
+    {0, 0, NULL, 0}
 };
-#define NUM_DESC_LIST (sizeof(descriptor_list)/sizeof(struct descriptor_list_struct))
 
 static union {
     uint8_t buf [7];
@@ -464,7 +466,6 @@ static inline void usb_ack_out(void)
 ISR(USB_COM_vect)
 {
     uint8_t intbits;
-    const uint8_t *list;
     const uint8_t *cfg;
     uint8_t i, n, len, en;
     uint8_t *p;
@@ -473,9 +474,8 @@ ISR(USB_COM_vect)
     uint16_t wValue;
     uint16_t wIndex;
     uint16_t wLength;
-    uint16_t desc_val;
-    const uint8_t *desc_addr;
-    uint8_t	desc_length;
+    const uint8_t *desc_addr=NULL;
+    uint8_t	desc_length=0;
 
     UENUM = 0;
     intbits = UEINTX;
@@ -490,6 +490,29 @@ ISR(USB_COM_vect)
         wLength |= (UEDATX << 8);
         UEINTX = ~((1<<RXSTPI) | (1<<RXOUTI) | (1<<TXINI));
         if (bRequest == GET_DESCRIPTOR) {
+#if 0
+            uint8_t *buf;
+            uint16_t idx, val;
+            for (buf = (uint8_t*)descriptor_list;
+                    (val = pgm_read_word(&buf[0])) && (idx = pgm_read_word(&buf[2]));
+                    buf+=sizeof(*descriptor_list)) {
+
+                if (val == wValue && idx == wIndex) {
+                    desc_addr = (const uint8_t *)pgm_read_word(&buf[4]);
+                    desc_length = pgm_read_byte(&buf[6]);
+                    break;
+                }
+
+            }
+            if (desc_addr == NULL) {
+                UECONX = (1<<STALLRQ)|(1<<EPEN);  //stall
+                return;
+            }
+#else
+#define NUM_DESC_LIST (sizeof(descriptor_list)/sizeof(*descriptor_list))
+            uint16_t desc_val;
+            const uint8_t *list;
+
             list = (const uint8_t *)descriptor_list;
             for (i=0; ; i++) {
 
@@ -500,14 +523,14 @@ ISR(USB_COM_vect)
 
                 desc_val = pgm_read_word(list);
                 if (desc_val != wValue) {
-                    list += sizeof(struct descriptor_list_struct);
+                    list += sizeof(*descriptor_list);
                     continue;
                 }
 
                 list += 2;
                 desc_val = pgm_read_word(list);
                 if (desc_val != wIndex) {
-                    list += sizeof(struct descriptor_list_struct)-2;
+                    list += sizeof(*descriptor_list)-2;
                     continue;
                 }
 
@@ -517,6 +540,7 @@ ISR(USB_COM_vect)
                 desc_length = pgm_read_byte(list);
                 break;
             }
+#endif
             len = (wLength < 256) ? wLength : 255;
             if (len > desc_length) len = desc_length;
             do {
