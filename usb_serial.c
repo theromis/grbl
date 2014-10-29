@@ -463,9 +463,9 @@ ISR(USB_GEN_vect)
 }
 
 // Misc functions to wait for ready and send/receive packets
-#define usb_wait_in_ready() while (!(UEINTX & (1<<TXINI))) ;
-#define usb_send_in() UEINTX = ~(1<<TXINI);
+#define usb_wait_in_ready()    while (!(UEINTX & (1<<TXINI ))) ;
 #define usb_wait_receive_out() while (!(UEINTX & (1<<RXOUTI))) ;
+#define usb_send_in() UEINTX = ~(1<<TXINI );
 #define usb_ack_out() UEINTX = ~(1<<RXOUTI);
 
 static inline int
