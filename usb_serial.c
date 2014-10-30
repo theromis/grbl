@@ -332,7 +332,6 @@ serial_reset_read_buffer()
 
     if (usb_configuration) {
         intr_state = SREG;
-        cli();
         UENUM = CDC_RX_ENDPOINT;
         while ((UEINTX & (1<<RWAL))) {
             UEINTX = 0x6B;
@@ -361,7 +360,6 @@ serial_write(uint8_t c)
     // used from the main program or interrupt context,
     // even both in the same program!
     intr_state = SREG;
-    cli();
     UENUM = CDC_TX_ENDPOINT;
 
     // if we gave up due to timeout before, don't wait again
@@ -413,10 +411,10 @@ serial_read()
         return ret;
 
     intr_state = SREG;
-    cli();
     UENUM = CDC_RX_ENDPOINT;
 
-    if (UEBCLX<=0) { // Empty buffer => flush it
+    while (!(UEINTX & ((1<<TXINI)|(1<<RXOUTI))));
+    if (((UEINTX & (1<<RXOUTI)) == 0)||(UEBCLX == 0)) { // Empty buffer => flush it
         UEINTX = 0x6B;
         goto exit;
     }
