@@ -278,11 +278,6 @@ static const descriptor_list_struct_t PROGMEM descriptor_list[] = {
     {0x0303, 0x0409, (const uint8_t *)&string3, sizeof(STR_SERIAL_NUMBER)},
 };
 
-static union {
-    uint8_t buf [7];
-    uint32_t hdr;
-} cdc_line_coding={{0x00, 0xE1, 0x00, 0x00, 0x00, 0x00, 0x08}};
-
 // Returns the number of bytes used in the RX serial buffer.
 uint8_t serial_get_rx_buffer_count()
 {
@@ -558,12 +553,15 @@ get_configuration()
     return 0;
 }
 
+// config line: dte_rate[4] = {0x0000e100(57600)}, char_format = 0, parity_type = 0, data_bits = 8
+static uint8_t cdc_line_coding[]={0x00, 0xE1, 0x00, 0x00, 0x00, 0x00, 0x08};
+
 static inline int
 cdc_line_coding_get()
 {
     uint8_t i, *p;
     usb_wait_in_ready();
-    p = cdc_line_coding.buf;
+    p = cdc_line_coding;
     for (i=0; i<7; i++) {
         UEDATX = *p++;
     }
@@ -576,7 +574,7 @@ cdc_line_coding_set()
 {
     uint8_t i, *p;
     usb_wait_receive_out();
-    p = cdc_line_coding.buf;
+    p = cdc_line_coding;
     for (i=0; i<7; i++) {
         *p++ = UEDATX;
     }
@@ -601,7 +599,7 @@ status_get(uint16_t index)
     usb_wait_in_ready();
     i = 0;
 #ifdef SUPPORT_ENDPOINT_HALT
-    if (bmRequestType == 0x82) {
+    if (request_type == 0x82) {
         UENUM = index;
         if (UECONX & (1<<STALLRQ)) i = 1;
         UENUM = 0;
@@ -621,7 +619,7 @@ feature_set(uint16_t index)
     if (i >= 1 && i <= MAX_ENDPOINT) {
         usb_send_in();
         UENUM = i;
-        if (bRequest == SET_FEATURE) {
+        if (request == SET_FEATURE) {
             UECONX = (1<<STALLRQ)|(1<<EPEN);
         } else {
             UECONX = (1<<STALLRQC)|(1<<RSTDT)|(1<<EPEN);
@@ -640,18 +638,19 @@ feature_set(uint16_t index)
 ISR(USB_COM_vect)
 {
     uint8_t intbits;
-    uint8_t bmRequestType;
-    uint8_t bRequest;
+    uint8_t request_type;
+    uint8_t request;
     uint16_t wValue;
     uint16_t wIndex;
     uint16_t wLength;
+    int ok = -1;
 
 
     UENUM = 0;
     intbits = UEINTX;
     if (intbits & (1<<RXSTPI)) {
-        bmRequestType = UEDATX;
-        bRequest = UEDATX;
+        request_type = UEDATX;
+        request = UEDATX;
         wValue = UEDATX;
         wValue |= (UEDATX << 8);
         wIndex = UEDATX;
@@ -661,37 +660,31 @@ ISR(USB_COM_vect)
 
         UEINTX = ~((1<<RXSTPI) | (1<<RXOUTI) | (1<<TXINI));
 
-        if (bRequest == GET_DESCRIPTOR) {
-            get_descriptor(wValue, wIndex, wLength);
-            return;
-        } else if (bRequest == SET_ADDRESS) {
-            set_address(wValue);
-            return;
-        } else if (bRequest == GET_STATUS) {
-            status_get(wIndex);
-            return;
-        } else if (bRequest == SET_CONFIGURATION          && bmRequestType == 0) {
-            set_configuration(wValue);
-            return;
-        } else if (bRequest == GET_CONFIGURATION          && bmRequestType == 0x80) {
-            get_configuration();
-            return;
-        } else if (bRequest == CDC_GET_LINE_CODING        && bmRequestType == 0xA1) {
-            cdc_line_coding_get();
-            return;
-        } else if (bRequest == CDC_SET_LINE_CODING        && bmRequestType == 0x21) {
-            cdc_line_coding_set();
-            return;
-        } else if (bRequest == CDC_SET_CONTROL_LINE_STATE && bmRequestType == 0x21) {
-            cdc_control_line_state_set(wValue);
-            return;
+        if (request == GET_DESCRIPTOR) {
+            ok = get_descriptor(wValue, wIndex, wLength);
+        } else if (request == SET_ADDRESS) {
+            ok = set_address(wValue);
+        } else if (request == GET_STATUS) {
+            ok = status_get(wIndex);
+        } else if (request == SET_CONFIGURATION          && request_type == 0) {
+            ok = set_configuration(wValue);
+        } else if (request == GET_CONFIGURATION          && request_type == 0x80) {
+            ok = get_configuration();
+        } else if (request == CDC_GET_LINE_CODING        && request_type == 0xA1) {
+            ok = cdc_line_coding_get();
+        } else if (request == CDC_SET_LINE_CODING        && request_type == 0x21) {
+            ok = cdc_line_coding_set();
+        } else if (request == CDC_SET_CONTROL_LINE_STATE && request_type == 0x21) {
+            ok = cdc_control_line_state_set(wValue);
 #ifdef SUPPORT_ENDPOINT_HALT
-        } else if ((bRequest == CLEAR_FEATURE || bRequest == SET_FEATURE)
-                && bmRequestType == 0x02 && wValue == 0) {
-            feature_set(wIndex);
-            return;
+        } else if ((request == CLEAR_FEATURE || request == SET_FEATURE)
+                && request_type == 0x02 && wValue == 0) {
+            ok = feature_set(wIndex);
 #endif
         }
     }
-    UECONX = (1<<STALLRQ) | (1<<EPEN);	// stall
+    if (ok == 0)
+        UEINTX = ~(1<<TXINI);
+    else
+        UECONX = (1<<STALLRQ) | (1<<EPEN);	// stall
 }
