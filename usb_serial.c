@@ -80,8 +80,8 @@
 #define STR_MANUFACTURER    L"Arduino"
 #define STR_PRODUCT     L"Arduino Yun"
 
-#define LSB(n) (n & 255)
-#define MSB(n) ((n >> 8) & 255)
+#define LSB(n) (n & 0xFF)
+#define MSB(n) ((n >> 8) & 0xFF)
 
 #define CDC_ACM_ENDPOINT    2
 #define CDC_RX_ENDPOINT     3
@@ -274,8 +274,8 @@ static const descriptor_list_struct_t PROGMEM descriptor_list[] = {
     {0x0300, 0x0000, (const uint8_t *)&string0, 4},
     {0x0301, 0x0409, (const uint8_t *)&string1, sizeof(STR_MANUFACTURER)},
     {0x0302, 0x0409, (const uint8_t *)&string2, sizeof(STR_PRODUCT)},
+    {0, 0, NULL, 0}, //skip serial
     {0x0303, 0x0409, (const uint8_t *)&string3, sizeof(STR_SERIAL_NUMBER)},
-    {0, 0, NULL, 0}
 };
 
 static union {
