@@ -338,6 +338,12 @@ serial_reset_read_buffer()
     }
 }
 
+// Misc functions to wait for ready and send/receive packets
+#define usb_wait_in_ready()    while (!(UEINTX & (1<<TXINI ))) ;
+#define usb_wait_receive_out() while (!(UEINTX & (1<<RXOUTI))) ;
+#define usb_send_in() UEINTX = ~(1<<TXINI );
+#define usb_ack_out() UEINTX = ~(1<<RXOUTI);
+
 static volatile uint8_t transmit_flush_timer=0;
 static uint8_t transmit_previous_timeout=0;
 
@@ -411,8 +417,8 @@ serial_read()
     intr_state = SREG;
     UENUM = CDC_RX_ENDPOINT;
 
-    while (!(UEINTX & ((1<<TXINI)|(1<<RXOUTI))));
-    if (((UEINTX & (1<<RXOUTI)) == 0)||(UEBCLX == 0)) { // Empty buffer => flush it
+    while (!(UEINTX & ((1<<TXINI)|(1<<RXOUTI)))); // wait for rx/tx
+    if ((UEBCLX == 0)) { // Empty buffer => flush it
         UEINTX = 0x6B;
         goto exit;
     }
@@ -462,12 +468,6 @@ ISR(USB_GEN_vect)
         }
     }
 }
-
-// Misc functions to wait for ready and send/receive packets
-#define usb_wait_in_ready()    while (!(UEINTX & (1<<TXINI ))) ;
-#define usb_wait_receive_out() while (!(UEINTX & (1<<RXOUTI))) ;
-#define usb_send_in() UEINTX = ~(1<<TXINI );
-#define usb_ack_out() UEINTX = ~(1<<RXOUTI);
 
 static inline int
 get_descriptor(uint16_t value, uint16_t index, uint16_t len)
