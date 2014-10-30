@@ -29,6 +29,7 @@
 #include "serial.h"
 #include "motion_control.h"
 #include "protocol.h"
+#include "print.h"
 
 #define GET_STATUS          0
 #define CLEAR_FEATURE           1
@@ -303,15 +304,23 @@ static uint8_t cdc_line_rtsdtr=0;
 void
 serial_init()
 {
+    usb_configuration = 0;
+    cdc_line_rtsdtr = 0;
+#if 1
     HW_CONFIG();
     USB_FREEZE();               // enable USB
     PLL_CONFIG();               // config PLL, 16 MHz xtal
     while (!(PLLCSR & (1<<PLOCK))) ;    // wait for PLL lock
     USB_CONFIG();               // start USB clock
-    UDCON = 0;              // enable attach resistor
+#else
+    UHWCON = (1 << UVREGE);
+    USBCON = (1 << USBE);
+    PLLCSR = (1 << PINDIV)|(1 << PLLE)|(1 << PLOCK);
+    UECONX = (1 << STALLRQ)|(1 << EPEN);
+    USBCON = (1 << USBE)|(1<<OTGPADE);
+#endif
 
-    usb_configuration = 0;
-    cdc_line_rtsdtr = 0;
+    UDCON = 0;              // enable attach resistor
     UDIEN = (1<<EORSTE)|(1<<SOFE);
 }
 
@@ -398,7 +407,6 @@ uint8_t
 serial_read()
 {
     uint8_t intr_state, ret = 0;
-    volatile uint8_t c;
 
     if (!usb_configuration)
         return ret;
@@ -406,18 +414,13 @@ serial_read()
     intr_state = SREG;
     UENUM = CDC_RX_ENDPOINT;
 
-    while (!((c = UEINTX) & (1<<RWAL)) ) {
-        if (!(c & (1<<RXOUTI)))
-            goto exit;
-
-        // no data in buffer
+    if (UEBCLX<=0) {
         UEINTX = 0x6B;
+        goto exit;
     }
 
     // take one byte out of the buffer
-    ret = UEDATX;
-    // if buffer completely used, release it
-    if (!(UEINTX & (1<<RWAL))) UEINTX = 0x6B;
+    ret = UEDATX; // Read 8byte
 exit:
     SREG = intr_state;
     return ret;
