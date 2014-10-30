@@ -443,13 +443,13 @@
   // Define flood and mist coolant enable output pins.
   // NOTE: Uno analog pins 4 and 5 are reserved for an i2c interface, and may be installed at
   // a later date if flash and memory space allows.
-  #define COOLANT_FLOOD_DDR   DDRC
-  #define COOLANT_FLOOD_PORT  PORTC
-  #define COOLANT_FLOOD_BIT   3  // Uno Analog Pin 3
+  #define COOLANT_FLOOD_DDR   DDRF
+  #define COOLANT_FLOOD_PORT  PORTF
+  #define COOLANT_FLOOD_BIT   4  // Uno Analog Pin 3
   #ifdef ENABLE_M7 // Mist coolant disabled by default. See config.h to enable/disable.
-    #define COOLANT_MIST_DDR   DDRC
-    #define COOLANT_MIST_PORT  PORTC
-    #define COOLANT_MIST_BIT   4 // Uno Analog Pin 4
+    #define COOLANT_MIST_DDR   DDRF
+    #define COOLANT_MIST_PORT  PORTF
+    #define COOLANT_MIST_BIT   1 // Uno Analog Pin 4
   #endif  
 
   // Define user-control pinouts (cycle start, reset, feed hold) input pins.
