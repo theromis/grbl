@@ -103,6 +103,7 @@ stepper_init()
 
     //Send start condition 
     i2cSendStart(); 
+#if 0
     i2cWaitForComplete();
 
     // send slave device address with write
@@ -110,7 +111,7 @@ stepper_init()
     i2cWaitForComplete();   
 
     //set control bytes
-    char lVout = Vout & 255;
+    char lVout = Vout & 0xFF;
     char hVout = (Vout>>8) & 0x0F;
 
     // send first byte to MCP
@@ -125,6 +126,7 @@ stepper_init()
     TWCR = (1<<TWINT)|(1<<TWEN);    
     i2cWaitForComplete();
 
+#endif
     //send stop condition
     i2cSendStop();
 
