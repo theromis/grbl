@@ -77,8 +77,9 @@
 #define STR_SERIAL_NUMBER   L"00"
 #endif
 
-#define STR_MANUFACTURER    L"Arduino"
-#define STR_PRODUCT     L"CNC Arduino "GRBL_VERSION"("GRBL_VERSION_BUILD")"
+#define STR_MANUFACTURER    L"Arduino LLC"
+//#define STR_PRODUCT     L"Arduino Yun "
+#define STR_PRODUCT     L"Arduino CNC "GRBL_VERSION"("GRBL_VERSION_BUILD")"
 
 #define LSB(n) (n & 0xFF)
 #define MSB(n) ((n >> 8) & 0xFF)
@@ -133,7 +134,7 @@ static const uint8_t PROGMEM device_descriptor[] = {
     18,                                 // bLength
     1,                                  // bDescriptorType
     0x00, 0x02,                         // bcdUSB
-    0,                                  // bDeviceClass
+    2,                                  // bDeviceClass
     0,                                  // bDeviceSubClass
     0,                                  // bDeviceProtocol
     ENDPOINT0_SIZE,                     // bMaxPacketSize0
@@ -146,11 +147,12 @@ static const uint8_t PROGMEM device_descriptor[] = {
     1                                   // bNumConfigurations
 };
 
+#if 1
 #define CONFIG1_DESC_SIZE (9+9+5+5+4+5+7+9+7+7)
 static const uint8_t PROGMEM config1_descriptor[CONFIG1_DESC_SIZE] = {
     // configuration descriptor, USB spec 9.6.3, page 264-266, Table 9-10
     9,                                  // bLength;
-    0,                                  // bDescriptorType;
+    2,                                  // bDescriptorType;
     LSB(CONFIG1_DESC_SIZE),             // wTotalLength
     MSB(CONFIG1_DESC_SIZE),
     2,                                  // bNumInterfaces
@@ -166,7 +168,7 @@ static const uint8_t PROGMEM config1_descriptor[CONFIG1_DESC_SIZE] = {
     1,                                  // bNumEndpoints
     0x02,                               // bInterfaceClass
     0x02,                               // bInterfaceSubClass
-    0x01,                               // bInterfaceProtocol
+    0x00,                               // bInterfaceProtocol
     0,                                  // iInterface
     // CDC Header Functional Descriptor, CDC Spec 5.2.3.1, Table 26
     5,                                  // bFunctionLength
@@ -220,8 +222,123 @@ static const uint8_t PROGMEM config1_descriptor[CONFIG1_DESC_SIZE] = {
     CDC_TX_ENDPOINT | 0x80,             // bEndpointAddress
     0x02,                               // bmAttributes (0x02=bulk)
     CDC_TX_SIZE, 0,                     // wMaxPacketSize
-    0                                   // bInterval
+    0,                                   // bInterval
 };
+#else
+#define CONFIG1_DESC_SIZE (9 +8+ 9+5+5+4+5+7+9+7+7 +9+9+7)
+static const uint8_t PROGMEM config1_descriptor[CONFIG1_DESC_SIZE] = {
+    // configuration descriptor, USB spec 9.6.3, page 264-266, Table 9-10
+    9,                                  // bLength;
+    2,                                  // bDescriptorType;
+    LSB(CONFIG1_DESC_SIZE),             // wTotalLength
+    MSB(CONFIG1_DESC_SIZE),
+    3,                                  // bNumInterfaces
+    1,                                  // bConfigurationValue
+    0,                                  // iConfiguration
+    0x80,                               // bmAttributes (Bus powered)
+    0xFA,                               // bMaxPower (500ma/2) = 0xFA
+    // aaaaaaaaaaaaaa
+    8,                                  // bLength
+    0x0B,                               // bDescriptorType
+    0, // bFirstInterface
+    2, // bInterfaceCount
+    2, // bFunctionClass
+    2, // bFunctionSubClass
+    1, // bFunctionProtocol
+    0, // iFunction
+    // interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
+    9,                                  // bLength
+    4,                                  // bDescriptorType
+    0,                                  // bInterfaceNumber
+    0,                                  // bAlternateSetting
+    1,                                  // bNumEndpoints
+    0x02,                               // bInterfaceClass
+    0x02,                               // bInterfaceSubClass
+    0x00,                               // bInterfaceProtocol
+    0,                                  // iInterface
+    // CDC Header Functional Descriptor, CDC Spec 5.2.3.1, Table 26
+    5,                                  // bFunctionLength
+    0x24,                               // bDescriptorType
+    0x00,                               // bDescriptorSubtype
+    0x10, 0x01,                         // bcdCDC
+    // Call Management Functional Descriptor, CDC Spec 5.2.3.2, Table 27
+    5,                                  // bFunctionLength
+    0x24,                               // bDescriptorType
+    0x01,                               // bDescriptorSubtype
+    0x01,                               // bmCapabilities
+    1,                                  // bDataInterface
+    // Abstract Control Management Functional Descriptor, CDC Spec 5.2.3.3, Table 28
+    4,                                  // bFunctionLength
+    0x24,                               // bDescriptorType
+    0x02,                               // bDescriptorSubtype
+    0x06,                               // bmCapabilities
+    // Union Functional Descriptor, CDC Spec 5.2.3.8, Table 33
+    5,                                  // bFunctionLength
+    0x24,                               // bDescriptorType
+    0x06,                               // bDescriptorSubtype
+    0,                                  // bMasterInterface
+    1,                                  // bSlaveInterface0
+    // endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
+    7,                                  // bLength
+    5,                                  // bDescriptorType
+    CDC_ACM_ENDPOINT | 0x80,            // bEndpointAddress
+    0x03,                               // bmAttributes (0x03=intr)
+    CDC_ACM_SIZE, 0,                    // wMaxPacketSize
+    64,                                 // bInterval
+    // interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
+    9,                                  // bLength
+    4,                                  // bDescriptorType
+    1,                                  // bInterfaceNumber
+    0,                                  // bAlternateSetting
+    2,                                  // bNumEndpoints
+    0x0A,                               // bInterfaceClass
+    0x00,                               // bInterfaceSubClass
+    0x00,                               // bInterfaceProtocol
+    0,                                  // iInterface
+    // endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
+    7,                                  // bLength
+    5,                                  // bDescriptorType
+    CDC_RX_ENDPOINT,                    // bEndpointAddress
+    0x02,                               // bmAttributes (0x02=bulk)
+    CDC_RX_SIZE, 0,                     // wMaxPacketSize
+    0,                                  // bInterval
+    // endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
+    7,                                  // bLength
+    5,                                  // bDescriptorType
+    CDC_TX_ENDPOINT | 0x80,             // bEndpointAddress
+    0x02,                               // bmAttributes (0x02=bulk)
+    CDC_TX_SIZE, 0,                     // wMaxPacketSize
+    0,                                   // bInterval
+    // Interface Descriptor 2/0 HID, 1 Endpoint
+    9,
+    4,
+    2,
+    0,
+    1,
+    3,
+    0,
+    0,
+    0,
+
+    // HID Descriptor
+    9,
+    21,
+    01, 01,
+    0,
+    1,
+    22,
+    00, 65,
+
+    // Endpoint Descriptor 84 4 In, Interrupt, 1 ms
+    7,
+    5,
+    84,
+    3,
+    0x00, 0x40,
+    1,
+
+};
+#endif
 
 static const uint8_t PROGMEM endpoint_config_table[] = {
     0,
@@ -278,7 +395,7 @@ static const descriptor_list_struct_t PROGMEM descriptor_list[] = {
     {0x0300, 0x0000, (const uint8_t *)&string0, 4},
     {0x0301, 0x0409, (const uint8_t *)&string1, sizeof(STR_MANUFACTURER)},
     {0x0302, 0x0409, (const uint8_t *)&string2, sizeof(STR_PRODUCT)},
-    {0, 0, NULL, 0},
+    {0xFFFF, 0, NULL, 0},
 };
 
 // Returns the number of bytes used in the RX serial buffer.
@@ -479,7 +596,7 @@ get_descriptor(uint16_t value, uint16_t index, uint16_t len)
     uint8_t i, n;
 
     for (buf = (uint8_t*)descriptor_list;
-            (val = pgm_read_word(&buf[0]));
+            (val = pgm_read_word(&buf[0])) != 0xFFFF;
             buf+=sizeof(*descriptor_list)) {
 
         idx = pgm_read_word(&buf[2]);
