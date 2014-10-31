@@ -148,7 +148,7 @@ static const uint8_t PROGMEM device_descriptor[] = {
 };
 
 #if 1
-#define CONFIG1_DESC_SIZE (9+9+5+5+4+5+7+9+7+7)
+#define CONFIG1_DESC_SIZE (9+8+9+5+5+4+5+7+9+7+7)
 static const uint8_t PROGMEM config1_descriptor[CONFIG1_DESC_SIZE] = {
     // configuration descriptor, USB spec 9.6.3, page 264-266, Table 9-10
     9,                                  // bLength;
@@ -160,6 +160,15 @@ static const uint8_t PROGMEM config1_descriptor[CONFIG1_DESC_SIZE] = {
     0,                                  // iConfiguration
     0x80,                               // bmAttributes (Bus powered)
     0xFA,                               // bMaxPower (500ma/2) = 0xFA
+    // aaaaaaaaaaaaaa
+    8,                                  // bLength
+    0x0B,                               // bDescriptorType
+    0, // bFirstInterface
+    2, // bInterfaceCount
+    2, // bFunctionClass
+    2, // bFunctionSubClass
+    1, // bFunctionProtocol
+    0, // iFunction
     // interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
     9,                                  // bLength
     4,                                  // bDescriptorType
