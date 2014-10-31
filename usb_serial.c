@@ -118,6 +118,14 @@
 #define EP_TYPE_BULK_OUT        0x80
 #define EP_TYPE_INTERRUPT_IN        0xC1
 
+#define TX_RX_LED_INIT  DDRD |= (1<<5), DDRB |= (1<<0)
+#define TXLED0          PORTD |= (1<<5)
+#define TXLED1          PORTD &= ~(1<<5)
+#define RXLED0          PORTB |= (1<<0)
+#define RXLED1          PORTB &= ~(1<<0)
+
+#define TX_RX_LED_PULSE_MS 100
+
 /**************************************************************************
  *
  *  Descriptor Data
@@ -330,6 +338,8 @@ serial_init()
 
     UDCON = 0;              // enable attach resistor
     UDIEN = (1<<EORSTE)|(1<<SOFE);
+
+    TX_RX_LED_INIT;
 }
 
 
@@ -351,6 +361,7 @@ serial_reset_read_buffer()
 // Misc functions to wait for ready and send/receive packets
 #define usb_wait_in_ready()    while (!(UEINTX & (1<<TXINI ))) ;
 #define usb_wait_receive_out() while (!(UEINTX & (1<<RXOUTI))) ;
+#define usb_wait_io() while (!(UEINTX & ((1<<TXINI)|(1<<RXOUTI)))) ;
 #define usb_send_in() UEINTX = ~(1<<TXINI );
 #define usb_ack_out() UEINTX = ~(1<<RXOUTI);
 
@@ -359,11 +370,12 @@ static uint8_t transmit_previous_timeout=0;
 
 #define TRANSMIT_TIMEOUT    25   /* in milliseconds */
 #define TRANSMIT_FLUSH_TIMEOUT  5   /* in milliseconds */
-
+volatile uint8_t tx_led_pulse, rx_led_pulse;
 // transmit a character.
 void
 serial_write(uint8_t c)
 {
+#if 1
     uint8_t timeout, intr_state;
 
     // if we're not online (enumerated and configured), error
@@ -413,6 +425,53 @@ serial_write(uint8_t c)
         UEINTX = 0x3A;
     transmit_flush_timer = TRANSMIT_FLUSH_TIMEOUT;
     SREG = intr_state;
+#else
+    if (!usb_configuration)
+        return;
+
+    u8 timeout = 250;       // 250ms timeout on send? TODO
+    while (len)
+    {
+        u8 n = USB_SendSpace(ep);
+        if (n == 0)
+        {
+            if (!(--timeout))
+                return -1;
+            delay(1);
+            continue;
+        }
+
+        if (n > len)
+            n = len;
+        {
+            LockEP lock(ep);
+            // Frame may have been released by the SOF interrupt handler
+            if (!ReadWriteAllowed())
+                continue;
+            len -= n;
+            if (ep & TRANSFER_ZERO)
+            {
+                while (n--)
+                    Send8(0);
+            }
+            else if (ep & TRANSFER_PGM)
+            {
+                while (n--)
+                    Send8(pgm_read_byte(data++));
+            }
+            else
+            {
+                while (n--)
+                    Send8(*data++);
+            }
+            if (!ReadWriteAllowed() || ((len == 0) && (ep & TRANSFER_RELEASE))) // Release full buffer
+                ReleaseTX();
+        }
+    }
+
+#endif
+    TXLED1;
+    tx_led_pulse = TX_RX_LED_PULSE_MS;
 }
 
 // Fetches the first byte in the serial read buffer. Called by main program.
@@ -427,7 +486,7 @@ serial_read()
     intr_state = SREG;
     UENUM = CDC_RX_ENDPOINT;
 
-    while (!(UEINTX & ((1<<TXINI)|(1<<RXOUTI)))); // wait for rx/tx
+    usb_wait_io();
     if ((UEBCLX == 0)) { // Empty buffer => flush it
         UEINTX = 0x6B;
         goto exit;
@@ -435,8 +494,12 @@ serial_read()
 
     // take one byte out of the buffer
     ret = UEDATX;
+
+    RXLED1;
+    rx_led_pulse = TX_RX_LED_PULSE_MS;
 exit:
     SREG = intr_state;
+
     return ret;
 }
 
@@ -476,6 +539,12 @@ ISR(USB_GEN_vect)
                 UEINTX = 0x3A;
             }
         }
+        // check whether the one-shot period has elapsed.  if so, turn off the LED
+        if (tx_led_pulse && !(--tx_led_pulse))
+            TXLED0;
+        if (rx_led_pulse && !(--rx_led_pulse))
+            RXLED0;
+
     }
 }
 
@@ -501,7 +570,7 @@ get_descriptor(uint16_t value, uint16_t index, uint16_t len)
             if (len > desc_length) len = desc_length;
             do {
                 // wait for host ready for IN packet
-                while (!(UEINTX & ((1<<TXINI)|(1<<RXOUTI)))); // wait for rx/tx
+                usb_wait_io();
                 // send IN packet
                 n = len < ENDPOINT0_SIZE ? len : ENDPOINT0_SIZE;
                 for (i = n; i; i--) {
