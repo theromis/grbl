@@ -29,7 +29,7 @@
 #include "serial.h"
 #include "motion_control.h"
 #include "protocol.h"
-#include "print.h"
+#include "settings.h"
 
 #define GET_STATUS          0
 #define CLEAR_FEATURE           1
@@ -78,7 +78,7 @@
 #endif
 
 #define STR_MANUFACTURER    L"Arduino"
-#define STR_PRODUCT     L"Arduino Yun"
+#define STR_PRODUCT     L"CNC Arduino "GRBL_VERSION"("GRBL_VERSION_BUILD")"
 
 #define LSB(n) (n & 0xFF)
 #define MSB(n) ((n >> 8) & 0xFF)
@@ -142,7 +142,7 @@ static const uint8_t PROGMEM device_descriptor[] = {
     0x00, 0x01,                         // bcdDevice
     1,                                  // iManufacturer
     2,                                  // iProduct
-    3,                                  // iSerialNumber
+    0,                                  // iSerialNumber
     1                                   // bNumConfigurations
 };
 
@@ -150,14 +150,14 @@ static const uint8_t PROGMEM device_descriptor[] = {
 static const uint8_t PROGMEM config1_descriptor[CONFIG1_DESC_SIZE] = {
     // configuration descriptor, USB spec 9.6.3, page 264-266, Table 9-10
     9,                                  // bLength;
-    2,                                  // bDescriptorType;
+    0,                                  // bDescriptorType;
     LSB(CONFIG1_DESC_SIZE),             // wTotalLength
     MSB(CONFIG1_DESC_SIZE),
     2,                                  // bNumInterfaces
     1,                                  // bConfigurationValue
     0,                                  // iConfiguration
-    0xC0,                               // bmAttributes
-    50,                                 // bMaxPower
+    0x80,                               // bmAttributes (Bus powered)
+    0xFA,                               // bMaxPower (500ma/2) = 0xFA
     // interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
     9,                                  // bLength
     4,                                  // bDescriptorType
