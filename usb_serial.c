@@ -147,7 +147,6 @@ static const uint8_t PROGMEM device_descriptor[] = {
     1                                   // bNumConfigurations
 };
 
-#if 1
 #define CONFIG1_DESC_SIZE (9+8+9+5+5+4+5+7+9+7+7)
 static const uint8_t PROGMEM config1_descriptor[CONFIG1_DESC_SIZE] = {
     // configuration descriptor, USB spec 9.6.3, page 264-266, Table 9-10
@@ -160,15 +159,15 @@ static const uint8_t PROGMEM config1_descriptor[CONFIG1_DESC_SIZE] = {
     0,                                  // iConfiguration
     0x80,                               // bmAttributes (Bus powered)
     0xFA,                               // bMaxPower (500ma/2) = 0xFA
-    // aaaaaaaaaaaaaa
+    // Abstract Control Management
     8,                                  // bLength
     0x0B,                               // bDescriptorType
-    0, // bFirstInterface
-    2, // bInterfaceCount
-    2, // bFunctionClass
-    2, // bFunctionSubClass
-    1, // bFunctionProtocol
-    0, // iFunction
+    0,                                  // bFirstInterface
+    2,                                  // bInterfaceCount
+    2,                                  // bFunctionClass
+    2,                                  // bFunctionSubClass
+    1,                                  // bFunctionProtocol
+    0,                                  // iFunction
     // interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
     9,                                  // bLength
     4,                                  // bDescriptorType
@@ -233,121 +232,6 @@ static const uint8_t PROGMEM config1_descriptor[CONFIG1_DESC_SIZE] = {
     CDC_TX_SIZE, 0,                     // wMaxPacketSize
     0,                                   // bInterval
 };
-#else
-#define CONFIG1_DESC_SIZE (9 +8+ 9+5+5+4+5+7+9+7+7 +9+9+7)
-static const uint8_t PROGMEM config1_descriptor[CONFIG1_DESC_SIZE] = {
-    // configuration descriptor, USB spec 9.6.3, page 264-266, Table 9-10
-    9,                                  // bLength;
-    2,                                  // bDescriptorType;
-    LSB(CONFIG1_DESC_SIZE),             // wTotalLength
-    MSB(CONFIG1_DESC_SIZE),
-    3,                                  // bNumInterfaces
-    1,                                  // bConfigurationValue
-    0,                                  // iConfiguration
-    0x80,                               // bmAttributes (Bus powered)
-    0xFA,                               // bMaxPower (500ma/2) = 0xFA
-    // aaaaaaaaaaaaaa
-    8,                                  // bLength
-    0x0B,                               // bDescriptorType
-    0, // bFirstInterface
-    2, // bInterfaceCount
-    2, // bFunctionClass
-    2, // bFunctionSubClass
-    1, // bFunctionProtocol
-    0, // iFunction
-    // interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
-    9,                                  // bLength
-    4,                                  // bDescriptorType
-    0,                                  // bInterfaceNumber
-    0,                                  // bAlternateSetting
-    1,                                  // bNumEndpoints
-    0x02,                               // bInterfaceClass
-    0x02,                               // bInterfaceSubClass
-    0x00,                               // bInterfaceProtocol
-    0,                                  // iInterface
-    // CDC Header Functional Descriptor, CDC Spec 5.2.3.1, Table 26
-    5,                                  // bFunctionLength
-    0x24,                               // bDescriptorType
-    0x00,                               // bDescriptorSubtype
-    0x10, 0x01,                         // bcdCDC
-    // Call Management Functional Descriptor, CDC Spec 5.2.3.2, Table 27
-    5,                                  // bFunctionLength
-    0x24,                               // bDescriptorType
-    0x01,                               // bDescriptorSubtype
-    0x01,                               // bmCapabilities
-    1,                                  // bDataInterface
-    // Abstract Control Management Functional Descriptor, CDC Spec 5.2.3.3, Table 28
-    4,                                  // bFunctionLength
-    0x24,                               // bDescriptorType
-    0x02,                               // bDescriptorSubtype
-    0x06,                               // bmCapabilities
-    // Union Functional Descriptor, CDC Spec 5.2.3.8, Table 33
-    5,                                  // bFunctionLength
-    0x24,                               // bDescriptorType
-    0x06,                               // bDescriptorSubtype
-    0,                                  // bMasterInterface
-    1,                                  // bSlaveInterface0
-    // endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
-    7,                                  // bLength
-    5,                                  // bDescriptorType
-    CDC_ACM_ENDPOINT | 0x80,            // bEndpointAddress
-    0x03,                               // bmAttributes (0x03=intr)
-    CDC_ACM_SIZE, 0,                    // wMaxPacketSize
-    64,                                 // bInterval
-    // interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
-    9,                                  // bLength
-    4,                                  // bDescriptorType
-    1,                                  // bInterfaceNumber
-    0,                                  // bAlternateSetting
-    2,                                  // bNumEndpoints
-    0x0A,                               // bInterfaceClass
-    0x00,                               // bInterfaceSubClass
-    0x00,                               // bInterfaceProtocol
-    0,                                  // iInterface
-    // endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
-    7,                                  // bLength
-    5,                                  // bDescriptorType
-    CDC_RX_ENDPOINT,                    // bEndpointAddress
-    0x02,                               // bmAttributes (0x02=bulk)
-    CDC_RX_SIZE, 0,                     // wMaxPacketSize
-    0,                                  // bInterval
-    // endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
-    7,                                  // bLength
-    5,                                  // bDescriptorType
-    CDC_TX_ENDPOINT | 0x80,             // bEndpointAddress
-    0x02,                               // bmAttributes (0x02=bulk)
-    CDC_TX_SIZE, 0,                     // wMaxPacketSize
-    0,                                   // bInterval
-    // Interface Descriptor 2/0 HID, 1 Endpoint
-    9,
-    4,
-    2,
-    0,
-    1,
-    3,
-    0,
-    0,
-    0,
-
-    // HID Descriptor
-    9,
-    21,
-    01, 01,
-    0,
-    1,
-    22,
-    00, 65,
-
-    // Endpoint Descriptor 84 4 In, Interrupt, 1 ms
-    7,
-    5,
-    84,
-    3,
-    0x00, 0x40,
-    1,
-
-};
-#endif
 
 static const uint8_t PROGMEM endpoint_config_table[] = {
     0,
