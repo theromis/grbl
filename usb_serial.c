@@ -491,11 +491,7 @@ get_descriptor(uint16_t value, uint16_t index, uint16_t len)
             if (len > desc_length) len = desc_length;
             do {
                 // wait for host ready for IN packet
-                do {
-                    i = UEINTX;
-                } while (!(i & ((1<<TXINI)|(1<<RXOUTI))));
-                if (i & (1<<RXOUTI))
-                    return -1;	// abort
+                while (!(UEINTX & ((1<<TXINI)|(1<<RXOUTI)))); // wait for rx/tx
                 // send IN packet
                 n = len < ENDPOINT0_SIZE ? len : ENDPOINT0_SIZE;
                 for (i = n; i; i--) {
