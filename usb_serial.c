@@ -133,7 +133,7 @@ static const uint8_t PROGMEM device_descriptor[] = {
     18,                                 // bLength
     1,                                  // bDescriptorType
     0x00, 0x02,                         // bcdUSB
-    2,                                  // bDeviceClass
+    0,                                  // bDeviceClass
     0,                                  // bDeviceSubClass
     0,                                  // bDeviceProtocol
     ENDPOINT0_SIZE,                     // bMaxPacketSize0
