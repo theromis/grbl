@@ -366,16 +366,69 @@ serial_reset_read_buffer()
 #define usb_ack_out() UEINTX = ~(1<<RXOUTI);
 
 static volatile uint8_t transmit_flush_timer=0;
-static uint8_t transmit_previous_timeout=0;
 
-#define TRANSMIT_TIMEOUT    25   /* in milliseconds */
-#define TRANSMIT_FLUSH_TIMEOUT  5   /* in milliseconds */
 volatile uint8_t tx_led_pulse, rx_led_pulse;
 // transmit a character.
+int
+serial_write_buf(uint8_t *data, uint8_t len)
+{
+    if (!usb_configuration)
+        return -1;
+
+    while (len)
+    {
+        uint8_t timeout = UDFNUML + 250;       // 250ms timeout on send? TODO
+        uint8_t intr_state, n = 0;
+
+        intr_state = SREG;
+        UENUM = CDC_TX_ENDPOINT;
+        if ((UEINTX & (1<<RWAL))) // ReadWriteAllowed
+            n = 64 - UEBCLX;
+
+        SREG = intr_state;
+
+        if (n == 0)
+        {
+            if (UDFNUML >= timeout)
+                return -1;
+
+            continue;
+        }
+
+        if (n > len)
+            n = len;
+        {
+            intr_state = SREG;
+            UENUM = CDC_TX_ENDPOINT;
+
+            // Frame may have been released by the SOF interrupt handler
+            if (!(UEINTX & (1<<RWAL))) // !ReadWriteAllowed
+                continue;
+
+            len -= n;
+
+            while (n--)
+                UEDATX = pgm_read_byte(data++); // Send data
+
+            if (!(UEINTX & (1<<RWAL)) || (len == 0)) // Release full buffer
+                UEINTX = 0x3A;  // ReleaseTX() FIFOCON=0 NAKINI=0 RWAL=1 NAKOUTI=1 RXSTPI=1 RXOUTI=0 STALLEDI=1 TXINI=0
+
+            SREG = intr_state;
+        }
+    }
+
+    TXLED1;
+    tx_led_pulse = TX_RX_LED_PULSE_MS;
+    return 0;
+}
+
 void
 serial_write(uint8_t c)
 {
-#if 1
+#if 0
+#define TRANSMIT_TIMEOUT    25   /* in milliseconds */
+#define TRANSMIT_FLUSH_TIMEOUT  5   /* in milliseconds */
+static uint8_t transmit_previous_timeout=0;
     uint8_t timeout, intr_state;
 
     // if we're not online (enumerated and configured), error
@@ -426,48 +479,7 @@ serial_write(uint8_t c)
     transmit_flush_timer = TRANSMIT_FLUSH_TIMEOUT;
     SREG = intr_state;
 #else
-    if (!usb_configuration)
-        return;
-
-    u8 timeout = 250;       // 250ms timeout on send? TODO
-    while (len)
-    {
-        u8 n = USB_SendSpace(ep);
-        if (n == 0)
-        {
-            if (!(--timeout))
-                return -1;
-            delay(1);
-            continue;
-        }
-
-        if (n > len)
-            n = len;
-        {
-            LockEP lock(ep);
-            // Frame may have been released by the SOF interrupt handler
-            if (!ReadWriteAllowed())
-                continue;
-            len -= n;
-            if (ep & TRANSFER_ZERO)
-            {
-                while (n--)
-                    Send8(0);
-            }
-            else if (ep & TRANSFER_PGM)
-            {
-                while (n--)
-                    Send8(pgm_read_byte(data++));
-            }
-            else
-            {
-                while (n--)
-                    Send8(*data++);
-            }
-            if (!ReadWriteAllowed() || ((len == 0) && (ep & TRANSFER_RELEASE))) // Release full buffer
-                ReleaseTX();
-        }
-    }
+    serial_write_buf(&c, 1);
 
 #endif
     TXLED1;
