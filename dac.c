@@ -24,119 +24,190 @@
     Copyright (c) 2011 Sungeun K. Jeon
 */ 
 
+#include <compat/twi.h>
 #include "system.h"
 
-#define sbi(var, mask)   ((var) |= (uint8_t)(1 << mask))
-#define cbi(var, mask)   ((var) &= (uint8_t)~(1 << mask))
-
-#define SLA_W 0xC0 //write address
-
-static void
-i2c_bitrate_set(unsigned short bitrateKHz)
-{
-    unsigned char bitrate_div;
-    // set i2c bitrate
-    // SCL freq = F_CPU/(16+2*TWBR))
-    //#ifdef TWPS0
-    // for processors with additional bitrate division (mega128)
-    // SCL freq = F_CPU/(16+2*TWBR*4^TWPS)
-    // set TWPS to zero
-    cbi(TWSR, TWPS0);
-    cbi(TWSR, TWPS1);
-    //#endif
-    // calculate bitrate division   
-    bitrate_div = ((F_CPU/1000l)/bitrateKHz);
-    if(bitrate_div >= 16)
-        bitrate_div = (bitrate_div-16)/2;
-    TWBR = bitrate_div;
-}
-
 void
-i2cSendStart(void)
+twi_init(void)
 {
-    // send start condition
-    TWCR = (1<<TWINT)|(1<<TWSTA)|(1<<TWEN);
+    TWSR = 0x00;
+    TWBR = 0x30;
+//    TWSR &= (~(1<<TWPS1))|(~(1<<TWPS0)); // Prescaler as 1
+
+
+//    F_SCK = F_CPU / (16 + 2*(TWBR)*POW(4,TWPS));
+//    TWBR = ((F_CPU/1000l)/100);
+
 }
 
-void i2cSendStop(void)
+#include "print.h"
+
+int
+twi_write(uint8_t addr, uint16_t value)
 {
-    // transmit stop condition
-    TWCR = (1<<TWINT)|(1<<TWEN)|(1<<TWSTO);
+    uint8_t ret=0xFF, retry=0;
+
+i2c_retry:
+    if (retry++>32)
+        goto i2c_quit;
+    //First send start condition over bus
+    TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTA);
+
+    //Wait for it to get done
+    while(!(TWCR & (1<<TWINT)));
+
+    ret = TWSR & 0xF8;
+
+    if (ret == TW_MT_ARB_LOST)
+        goto i2c_retry;
+    if ((ret != TW_START) && (ret != TW_REP_START))
+        goto i2c_quit;
+
+
+    //Start transmitted now transmit SLA+W
+    TWDR = addr | TW_WRITE; // 1100 000 0 = 0xc0 for MCP4725
+
+    //Clear TWINT flag to start transmission
+    TWCR = (1<<TWINT) | (1<<TWEN);
+
+    //Wait for it to get done
+    while(!(TWCR & (1<<TWINT)));
+
+    ret = TWSR & 0xF8;
+    if ((ret == TW_MT_SLA_NACK) || (ret == TW_MT_ARB_LOST))
+        goto i2c_retry;
+    if (ret != TW_MT_SLA_ACK)
+        goto i2c_quit;
+
+#if 0
+    //MCP4726_CMD_WRITEDACEEPROM
+    TWDR = 0x60;
+#else
+    //MCP4726_CMD_WRITEDAC
+    TWDR = 0x40;
+#endif
+
+    //Clear TWINT flag to start transmission
+    TWCR = (1<<TWINT) | (1<<TWEN);
+
+    //Wait for it to get done
+    while(!(TWCR & (1<<TWINT)));
+
+    ret = TWSR & 0xF8;
+    if (ret != TW_MT_DATA_ACK)
+        goto i2c_quit;
+
+    //load high data byte into TWDR
+    TWDR =(value >> 4) & 0xFF; // (D11.D10.D9.D8.D7.D6.D5.D4)
+
+    //Clear TWINT flag to start transmission
+    TWCR = (1<<TWINT) | (1<<TWEN);
+
+    //Wait for it to get done
+    while(!(TWCR & (1<<TWINT)));
+
+    ret = TWSR & 0xF8;
+    if (ret != TW_MT_DATA_ACK)
+        goto i2c_quit;
+
+    //load low data byte into TWDR
+    TWDR = (value&0x0F)<<4;
+
+    //Clear TWINT flag to start transmission
+    TWCR = (1<<TWINT) | (1<<TWEN);
+
+    //Wait for it to get done
+    while(!(TWCR & (1<<TWINT)));
+
+    ret = TWSR & 0xF8;
+    if (ret != TW_MT_DATA_ACK)
+        goto i2c_quit;
+
+    ret = 0;
+i2c_quit:
+    //Now transmit STOP condition
+    TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
+
+    return ret;
 }
 
-void i2cWaitForComplete(void)
+int
+twi_read(uint8_t addr, uint8_t *status, uint16_t *value)
 {
-    // wait for i2c interface to complete operation
-    while (!(TWCR & (1<<TWINT)));
-}
+    uint8_t data;
+    //First send start condition over bus
+    TWCR = (1<<TWINT) | (1<<TWSTA) | (1<<TWEN);
 
-void i2cSendByte(unsigned char data)
-{
-    // save data to the TWDR
-    TWDR = data;
-    // begin send
-    TWCR = (1<<TWINT)|(1<<TWEN);
-}
+    //Wait for it to get done
+    while(!(TWCR & (1<<TWINT)));
 
-#define Vout 3000//binary value going into register, 0-4095
+    data = TWSR;
+
+    //Check if Start was transmitted or not
+    if((data & 0xF8) != 0x08)
+        return -1;
+
+
+    //Start transmitted now transmit SLA+W
+    TWDR = addr|TW_READ; // 1100 000 0 = 0xc0 for MCP4725
+
+    //Clear TWINT flag to start transmission
+    TWCR = (1<<TWINT) | (1<<TWEN);
+
+    //Wait for it to get done
+    while(!(TWCR & (1<<TWINT)));
+
+    // Read start
+    TWCR = (1<<TWINT) | (1<<TWEA) | (1<<TWEN);
+    //Wait for it to get done
+    while(!(TWCR & (1<<TWINT)));
+
+    *status = TWDR;
+
+    TWCR = (1<<TWINT) | (1<<TWEA) | (1<<TWEN);
+    //Wait for it to get done
+    while(!(TWCR & (1<<TWINT)));
+
+    *value = TWDR<<4;
+
+    TWCR = (1<<TWINT) | (1<<TWEN);
+    //Wait for it to get done
+    while(!(TWCR & (1<<TWINT)));
+
+    *value |= TWDR>>4;
+
+    //Now transmit STOP condition
+
+    TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
+
+    return 0;
+}
 
 // Initialize and setup the stepper motor subsystem
 void
 stepper_init()
 {
-    // set pull-up resistors on I2C bus pins
-    //sbi(PORTC, 0);    // i2c SCL on ATmega163,323,16,32,etc
-    //sbi(PORTC, 1);    // i2c SDA on ATmega163,323,16,32,etc
-    //sbi(PORTD, 0);    // i2c SCL on ATmega128,64
-    //sbi(PORTD, 1);    // i2c SDA on ATmega128,64
-
-    // set i2c bit rate to 40KHz
-    i2c_bitrate_set(100);
-    // enable TWI (two-wire interface)
-    sbi(TWCR, TWEN);
-
-    //initilize I2C hardware
-    TWCR = 0x00;
-    TWBR = 8;
-    cbi(TWCR, TWEA);    
-    sbi(TWCR, TWEN);
-
-    //Send start condition 
-    i2cSendStart(); 
-#if 0
-    i2cWaitForComplete();
-
-    // send slave device address with write
-    i2cSendByte(SLA_W); 
-    i2cWaitForComplete();   
-
-    //set control bytes
-    char lVout = Vout & 0xFF;
-    char hVout = (Vout>>8) & 0x0F;
-
-    // send first byte to MCP
-    TWDR = hVout;
-    // begin send
-    TWCR = (1<<TWINT)|(1<<TWEN);    
-    i2cWaitForComplete();
-
-    // send second byte to MCP
-    TWDR = lVout;
-    // begin send
-    TWCR = (1<<TWINT)|(1<<TWEN);    
-    i2cWaitForComplete();
-
-#endif
-    //send stop condition
-    i2cSendStop();
-
-    TWCR = 0x00;//stop I2C
 }
 
 // Enable steppers, but cycle does not start unless called by motion control or runtime command.
 void
 st_wake_up()
 {
+#if 0
+    uint8_t status;
+    uint16_t val;
+    printPgmString(PSTR("st_wake_up\r\n"));
+    twi_init();
+//    twi_write(0xC0, 0);
+//    twi_write(0xC0, 4095);
+//    twi_write(0xC0, 1000);
+    twi_read(0xC0, &status, &val);
+    printPgmString(PSTR("twi_read "));
+    print_uint8_base2(status);
+    printPgmString(PSTR(" "));
+    print_uint32_base10(val);
+    printPgmString(PSTR("\r\n"));
+#endif
 }
 
 // Immediately disables steppers
