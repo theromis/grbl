@@ -27,17 +27,12 @@
 #include <compat/twi.h>
 #include "system.h"
 
+#define TWI_FREQ 100000L
 void
 twi_init(void)
 {
-    TWSR = 0x00;
-    TWBR = 0x30;
-//    TWSR &= (~(1<<TWPS1))|(~(1<<TWPS0)); // Prescaler as 1
-
-
-//    F_SCK = F_CPU / (16 + 2*(TWBR)*POW(4,TWPS));
-//    TWBR = ((F_CPU/1000l)/100);
-
+    TWSR &= (~(1<<TWPS1))|(~(1<<TWPS0)); // Prescaler as 1
+    TWBR = ((F_CPU / TWI_FREQ) - 16) / 2;
 }
 
 #include "print.h"
