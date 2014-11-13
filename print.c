@@ -31,17 +31,25 @@
 
 void printString(const char *s)
 {
+#if 0
+  serial_write_null_buf(s);
+#else
   while (*s)
     serial_write(*s++);
+#endif
 }
 
 
 // Print a string stored in PGM-memory
 void printPgmString(const char *s)
 {
+#if 0
+  serial_write_null_pgm_buf(s);
+#else
   char c;
   while ((c = pgm_read_byte_near(s++)))
     serial_write(c);
+#endif
 }
 
 

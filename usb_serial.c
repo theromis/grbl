@@ -365,12 +365,104 @@ serial_reset_read_buffer()
 #define usb_send_in() UEINTX = ~(1<<TXINI );
 #define usb_ack_out() UEINTX = ~(1<<RXOUTI);
 
-static volatile uint8_t transmit_flush_timer=0;
-
 volatile uint8_t tx_led_pulse, rx_led_pulse;
 // transmit a character.
 int
-serial_write_buf(uint8_t *data, uint8_t len)
+serial_write_null_buf(const char *data)
+{
+    if (!usb_configuration)
+        return -1;
+
+    while (*data)
+    {
+        uint8_t timeout = UDFNUML + 250;       // 250ms timeout on send? TODO
+        uint8_t intr_state, n = 0;
+
+        intr_state = SREG;
+        UENUM = CDC_TX_ENDPOINT;
+        if ((UEINTX & (1<<RWAL))) // ReadWriteAllowed
+            n = 64 - UEBCLX;
+
+        SREG = intr_state;
+
+        if (n == 0)
+        {
+            if (UDFNUML >= timeout)
+                return -1;
+
+            continue;
+        }
+
+        intr_state = SREG;
+        UENUM = CDC_TX_ENDPOINT;
+
+        // Frame may have been released by the SOF interrupt handler
+        if (!(UEINTX & (1<<RWAL))) // !ReadWriteAllowed
+            continue;
+
+        while (*data && n--)
+            UEDATX = *data++; // Send data
+
+        if (!(UEINTX & (1<<RWAL))||*data==0) // Release full buffer
+            UEINTX = 0x3A;  // ReleaseTX() FIFOCON=0 NAKINI=0 RWAL=1 NAKOUTI=1 RXSTPI=1 RXOUTI=0 STALLEDI=1 TXINI=0
+
+        SREG = intr_state;
+    }
+
+    TXLED1;
+    tx_led_pulse = TX_RX_LED_PULSE_MS;
+    return 0;
+}
+
+int
+serial_write_null_pgm_buf(const char *data)
+{
+    uint8_t c;
+    if (!usb_configuration)
+        return -1;
+
+    while ((c= pgm_read_byte(data))) {
+        uint8_t timeout = UDFNUML + 250;       // 250ms timeout on send? TODO
+        uint8_t intr_state, n = 0;
+
+        intr_state = SREG;
+        UENUM = CDC_TX_ENDPOINT;
+        if ((UEINTX & (1<<RWAL))) // ReadWriteAllowed
+            n = 64 - UEBCLX;
+
+        SREG = intr_state;
+
+        if (n == 0)
+        {
+            if (UDFNUML >= timeout)
+                return -1;
+
+            continue;
+        }
+
+        intr_state = SREG;
+        UENUM = CDC_TX_ENDPOINT;
+
+        // Frame may have been released by the SOF interrupt handler
+        if (!(UEINTX & (1<<RWAL))) // !ReadWriteAllowed
+            continue;
+
+        while ((c = pgm_read_byte(data++)) && n--)
+            UEDATX = c; // Send data
+
+        if (!(UEINTX & (1<<RWAL))||c==0) // Release full buffer
+            UEINTX = 0x3A;  // ReleaseTX() FIFOCON=0 NAKINI=0 RWAL=1 NAKOUTI=1 RXSTPI=1 RXOUTI=0 STALLEDI=1 TXINI=0
+
+        SREG = intr_state;
+    }
+
+    TXLED1;
+    tx_led_pulse = TX_RX_LED_PULSE_MS;
+    return 0;
+}
+
+int
+serial_write_buf(const char *data, uint8_t len)
 {
     if (!usb_configuration)
         return -1;
@@ -397,7 +489,60 @@ serial_write_buf(uint8_t *data, uint8_t len)
 
         if (n > len)
             n = len;
+
+        intr_state = SREG;
+        UENUM = CDC_TX_ENDPOINT;
+
+        // Frame may have been released by the SOF interrupt handler
+        if (!(UEINTX & (1<<RWAL))) // !ReadWriteAllowed
+            continue;
+
+        len -= n;
+
+        while (n--)
+            UEDATX = *data++; // Send data
+
+        if (!(UEINTX & (1<<RWAL))||len==0) // Release full buffer
+            UEINTX = 0x3A;  // ReleaseTX() FIFOCON=0 NAKINI=0 RWAL=1 NAKOUTI=1 RXSTPI=1 RXOUTI=0 STALLEDI=1 TXINI=0
+
+        SREG = intr_state;
+
+    }
+
+    TXLED1;
+    tx_led_pulse = TX_RX_LED_PULSE_MS;
+    return 0;
+}
+
+int
+serial_write_pgm_buf(const char *data, uint8_t len)
+{
+    if (!usb_configuration)
+        return -1;
+
+    while (len)
+    {
+        uint8_t timeout = UDFNUML + 250;       // 250ms timeout on send? TODO
+        uint8_t intr_state, n = 0;
+
+        intr_state = SREG;
+        UENUM = CDC_TX_ENDPOINT;
+        if ((UEINTX & (1<<RWAL))) // ReadWriteAllowed
+            n = 64 - UEBCLX;
+
+        SREG = intr_state;
+
+        if (n == 0)
         {
+            if (UDFNUML >= timeout)
+                return -1;
+
+            continue;
+        }
+
+        if (n > len)
+            n = len;
+
             intr_state = SREG;
             UENUM = CDC_TX_ENDPOINT;
 
@@ -410,11 +555,10 @@ serial_write_buf(uint8_t *data, uint8_t len)
             while (n--)
                 UEDATX = pgm_read_byte(data++); // Send data
 
-            if (!(UEINTX & (1<<RWAL)) || (len == 0)) // Release full buffer
+            if (!(UEINTX & (1<<RWAL)) || len==0) // Release full buffer
                 UEINTX = 0x3A;  // ReleaseTX() FIFOCON=0 NAKINI=0 RWAL=1 NAKOUTI=1 RXSTPI=1 RXOUTI=0 STALLEDI=1 TXINI=0
 
             SREG = intr_state;
-        }
     }
 
     TXLED1;
@@ -425,65 +569,7 @@ serial_write_buf(uint8_t *data, uint8_t len)
 void
 serial_write(uint8_t c)
 {
-#if 0
-#define TRANSMIT_TIMEOUT    25   /* in milliseconds */
-#define TRANSMIT_FLUSH_TIMEOUT  5   /* in milliseconds */
-static uint8_t transmit_previous_timeout=0;
-    uint8_t timeout, intr_state;
-
-    // if we're not online (enumerated and configured), error
-    if (!usb_configuration)
-        return;
-
-    // interrupts are disabled so these functions can be
-    // used from the main program or interrupt context,
-    // even both in the same program!
-    intr_state = SREG;
-    UENUM = CDC_TX_ENDPOINT;
-
-    // if we gave up due to timeout before, don't wait again
-    if (transmit_previous_timeout) {
-        if (!(UEINTX & (1<<RWAL))) {
-            SREG = intr_state;
-            return;
-        }
-        transmit_previous_timeout = 0;
-    }
-    // wait for the FIFO to be ready to accept data
-    timeout = UDFNUML + TRANSMIT_TIMEOUT;
-
-    // while we ready to transmit
-    while (!(UEINTX & (1<<RWAL))) {
-        SREG = intr_state;
-
-        // have we waited too long?  This happens if the user
-        // is not running an application that is listening
-        if (UDFNUML >= timeout) {
-            transmit_previous_timeout = 1;
-            return;
-        }
-
-        // has the USB gone offline?
-        if (!usb_configuration)
-            return;
-
-        // get ready to try checking again
-        intr_state = SREG;
-        UENUM = CDC_TX_ENDPOINT;
-    }
-    // actually write the byte into the FIFO
-    UEDATX = c;
-    // if this completed a packet, transmit it now!
-    if (!(UEINTX & (1<<RWAL)))
-        UEINTX = 0x3A;
-    transmit_flush_timer = TRANSMIT_FLUSH_TIMEOUT;
-    SREG = intr_state;
-#else
-    serial_write_buf(&c, 1);
-
-#endif
-    TXLED1;
-    tx_led_pulse = TX_RX_LED_PULSE_MS;
+    serial_write_buf((char *)&c, 1);
 }
 
 // Fetches the first byte in the serial read buffer. Called by main program.
@@ -528,10 +614,9 @@ exit:
 //
 ISR(USB_GEN_vect)
 {
-    uint8_t intbits, t;
-
-    intbits = UDINT;
+    uint8_t intbits = UDINT;
     UDINT = 0;
+
     if (intbits & (1<<EORSTI)) {
         UENUM = 0;
         UECONX = 1;
@@ -543,14 +628,11 @@ ISR(USB_GEN_vect)
     }
 
     if (usb_configuration && intbits & (1<<SOFI)) {
-        t = transmit_flush_timer;
-        if (t) {
-            transmit_flush_timer = --t;
-            if (!t) {
-                UENUM = CDC_TX_ENDPOINT;
-                UEINTX = 0x3A;
-            }
+        if (UEBCLX) {
+            UENUM = CDC_TX_ENDPOINT;
+            UEINTX = 0x3A;
         }
+
         // check whether the one-shot period has elapsed.  if so, turn off the LED
         if (tx_led_pulse && !(--tx_led_pulse))
             TXLED0;
@@ -617,7 +699,6 @@ set_configuration(uint16_t value)
     const uint8_t *cfg;
     usb_configuration = value;
     cdc_line_rtsdtr = 0;
-    transmit_flush_timer = 0;
     usb_send_in();
     cfg = endpoint_config_table;
     for (i=1; i<5; i++) {

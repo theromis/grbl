@@ -53,6 +53,12 @@ void serial_init();
 // Writes one byte to the TX serial buffer. Called by main program.
 void serial_write(uint8_t data);
 
+int serial_write_null_buf(const char *data);
+int serial_write_null_pgm_buf(const char *data);
+
+int serial_write_buf(const char *data, uint8_t len);
+int serial_write_pgm_buf(const char *data, uint8_t len);
+
 // Fetches the first byte in the serial read buffer. Called by main program.
 uint8_t serial_read();
 
