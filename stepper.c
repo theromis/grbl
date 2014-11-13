@@ -31,6 +31,8 @@
 #include "planner.h"
 #include "probe.h"
 
+#include "print.h"
+
 
 // Some useful constants.
 #define DT_SEGMENT (1.0/(ACCELERATION_TICKS_PER_SECOND*60.0)) // min/segment 
@@ -374,6 +376,15 @@ ISR(TIMER1_COMPA_vect)
     st.counter_x -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
     else { sys.position[X_AXIS]++; }
+#if 1
+  printPgmString(PSTR(" X: "));
+  printInteger(sys.position[X_AXIS]);
+  printPgmString(PSTR(" Y  "));
+  printInteger(sys.position[Y_AXIS]);
+  printPgmString(PSTR(" Z  "));
+  printInteger(sys.position[Z_AXIS]);
+  printPgmString(PSTR("\r\n"));
+#endif
   }
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
     st.counter_y += st.steps[Y_AXIS];
@@ -385,6 +396,15 @@ ISR(TIMER1_COMPA_vect)
     st.counter_y -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
     else { sys.position[Y_AXIS]++; }
+#if 1
+  printPgmString(PSTR(" X  "));
+  printInteger(sys.position[X_AXIS]);
+  printPgmString(PSTR(" Y: "));
+  printInteger(sys.position[Y_AXIS]);
+  printPgmString(PSTR(" Z  "));
+  printInteger(sys.position[Z_AXIS]);
+  printPgmString(PSTR("\r\n"));
+#endif
   }
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
     st.counter_z += st.steps[Z_AXIS];
@@ -396,6 +416,15 @@ ISR(TIMER1_COMPA_vect)
     st.counter_z -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
     else { sys.position[Z_AXIS]++; }
+#if 1
+  printPgmString(PSTR(" X  "));
+  printInteger(sys.position[X_AXIS]);
+  printPgmString(PSTR(" Y  "));
+  printInteger(sys.position[Y_AXIS]);
+  printPgmString(PSTR(" Z: "));
+  printInteger(sys.position[Z_AXIS]);
+  printPgmString(PSTR("\r\n"));
+#endif
   }  
 
   // During a homing cycle, lock out and prevent desired axes from moving.

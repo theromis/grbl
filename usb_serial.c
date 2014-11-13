@@ -548,22 +548,22 @@ serial_write_pgm_buf(const char *data, uint8_t len)
         if (n > len)
             n = len;
 
-            intr_state = SREG;
-            UENUM = CDC_TX_ENDPOINT;
+        intr_state = SREG;
+        UENUM = CDC_TX_ENDPOINT;
 
-            // Frame may have been released by the SOF interrupt handler
-            if (!(UEINTX & (1<<RWAL))) // !ReadWriteAllowed
-                continue;
+        // Frame may have been released by the SOF interrupt handler
+        if (!(UEINTX & (1<<RWAL))) // !ReadWriteAllowed
+            continue;
 
-            len -= n;
+        len -= n;
 
-            while (n--)
-                UEDATX = pgm_read_byte(data++); // Send data
+        while (n--)
+            UEDATX = pgm_read_byte(data++); // Send data
 
-            if (!(UEINTX & (1<<RWAL)) || len==0) // Release full buffer
-                UEINTX = 0x3A;  // ReleaseTX() FIFOCON=0 NAKINI=0 RWAL=1 NAKOUTI=1 RXSTPI=1 RXOUTI=0 STALLEDI=1 TXINI=0
+        if (!(UEINTX & (1<<RWAL)) || len==0) // Release full buffer
+            UEINTX = 0x3A;  // ReleaseTX() FIFOCON=0 NAKINI=0 RWAL=1 NAKOUTI=1 RXSTPI=1 RXOUTI=0 STALLEDI=1 TXINI=0
 
-            SREG = intr_state;
+        SREG = intr_state;
     }
 
     transmit_flush_timer = TRANSMIT_FLUSH_TIMEOUT;
