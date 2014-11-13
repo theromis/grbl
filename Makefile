@@ -33,14 +33,15 @@ CLOCK      = 16000000
 PROGRAMMER ?= -c avrisp2 -P usb
 OBJECTS    = main.o motion_control.o gcode.o spindle_control.o coolant_control.o \
              protocol.o eeprom.o settings.o planner.o nuts_bolts.o limits.o \
-             print.o probe.o report.o system.o usb_serial.o dac_4725.o stepper.o #serial.o
+             print.o probe.o report.o system.o dac_4725.o stepper.o serial.o #usb_serial.o
 # FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
 
 # Tune the lines below only if you know what you are doing:
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F
-COMPILE = avr-gcc -Wall -Os -DCPU_MAP_ATMEGA32U4 -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections
+COMPILE = avr-gcc -Wall -Os -DCPU_MAP_ATMEGA328P_TRADITIONAL -DF_CPU=$(CLOCK) -mmcu=atmega328p -I. -ffunction-sections
+#COMPILE = avr-gcc -Wall -Os -DCPU_MAP_ATMEGA32U4 -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections
 
 # symbolic targets:
 all:	grbl.hex
