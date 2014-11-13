@@ -365,7 +365,9 @@ serial_reset_read_buffer()
 #define usb_send_in() UEINTX = ~(1<<TXINI );
 #define usb_ack_out() UEINTX = ~(1<<RXOUTI);
 
-volatile uint8_t tx_led_pulse, rx_led_pulse;
+#define TRANSMIT_FLUSH_TIMEOUT 5
+static volatile uint8_t transmit_flush_timer=0;
+static volatile uint8_t tx_led_pulse, rx_led_pulse;
 // transmit a character.
 int
 serial_write_null_buf(const char *data)
@@ -409,6 +411,7 @@ serial_write_null_buf(const char *data)
         SREG = intr_state;
     }
 
+    transmit_flush_timer = TRANSMIT_FLUSH_TIMEOUT;
     TXLED1;
     tx_led_pulse = TX_RX_LED_PULSE_MS;
     return 0;
@@ -417,11 +420,11 @@ serial_write_null_buf(const char *data)
 int
 serial_write_null_pgm_buf(const char *data)
 {
-    uint8_t c;
+    uint8_t c=1;
     if (!usb_configuration)
         return -1;
 
-    while ((c= pgm_read_byte(data))) {
+    while (c) {
         uint8_t timeout = UDFNUML + 250;       // 250ms timeout on send? TODO
         uint8_t intr_state, n = 0;
 
@@ -456,6 +459,7 @@ serial_write_null_pgm_buf(const char *data)
         SREG = intr_state;
     }
 
+    transmit_flush_timer = TRANSMIT_FLUSH_TIMEOUT;
     TXLED1;
     tx_led_pulse = TX_RX_LED_PULSE_MS;
     return 0;
@@ -509,6 +513,7 @@ serial_write_buf(const char *data, uint8_t len)
 
     }
 
+    transmit_flush_timer = TRANSMIT_FLUSH_TIMEOUT;
     TXLED1;
     tx_led_pulse = TX_RX_LED_PULSE_MS;
     return 0;
@@ -561,15 +566,68 @@ serial_write_pgm_buf(const char *data, uint8_t len)
             SREG = intr_state;
     }
 
+    transmit_flush_timer = TRANSMIT_FLUSH_TIMEOUT;
     TXLED1;
     tx_led_pulse = TX_RX_LED_PULSE_MS;
     return 0;
 }
 
+
 void
 serial_write(uint8_t c)
 {
-    serial_write_buf((char *)&c, 1);
+#define TRANSMIT_TIMEOUT    25   /* in milliseconds */
+
+    uint8_t timeout, intr_state;
+    static uint8_t transmit_previous_timeout = 0;
+
+    // if we're not online (enumerated and configured), error
+    if (!usb_configuration)
+        return;
+
+    // interrupts are disabled so these functions can be
+    // used from the main program or interrupt context,
+    // even both in the same program!
+    intr_state = SREG;
+    UENUM = CDC_TX_ENDPOINT;
+
+    // if we gave up due to timeout before, don't wait again
+    if (transmit_previous_timeout) {
+        if (!(UEINTX & (1<<RWAL))) {
+            SREG = intr_state;
+            return;
+        }
+        transmit_previous_timeout = 0;
+    }
+    // wait for the FIFO to be ready to accept data
+    timeout = UDFNUML + TRANSMIT_TIMEOUT;
+
+    // while we ready to transmit
+    while (!(UEINTX & (1<<RWAL))) {
+        SREG = intr_state;
+
+        // have we waited too long?  This happens if the user
+        // is not running an application that is listening
+        if (UDFNUML >= timeout) {
+            transmit_previous_timeout = 1;
+            return;
+        }
+
+        // has the USB gone offline?
+        if (!usb_configuration)
+            return;
+
+        // get ready to try checking again
+        intr_state = SREG;
+        UENUM = CDC_TX_ENDPOINT;
+    }
+    // actually write the byte into the FIFO
+    UEDATX = c;
+    // if this completed a packet, transmit it now!
+    if (!(UEINTX & (1<<RWAL)))
+        UEINTX = 0x3A;
+    transmit_flush_timer = TRANSMIT_FLUSH_TIMEOUT;
+    SREG = intr_state;
 }
 
 // Fetches the first byte in the serial read buffer. Called by main program.
@@ -628,7 +686,8 @@ ISR(USB_GEN_vect)
     }
 
     if (usb_configuration && intbits & (1<<SOFI)) {
-        if (UEBCLX) {
+        if (transmit_flush_timer || UEBCLX) {
+            transmit_flush_timer = 0;
             UENUM = CDC_TX_ENDPOINT;
             UEINTX = 0x3A;
         }
