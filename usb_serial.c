@@ -634,7 +634,7 @@ serial_write(uint8_t c)
 uint8_t
 serial_read()
 {
-    uint8_t intr_state, ret = 0;
+    uint8_t intr_state, data, ret = SERIAL_NO_DATA;
 
     if (!usb_configuration)
         return ret;
@@ -649,7 +649,25 @@ serial_read()
     }
 
     // take one byte out of the buffer
-    ret = UEDATX;
+    data = UEDATX;
+    switch (ret) {
+        case CMD_STATUS_REPORT:
+            bit_true_atomic(sys.execute, EXEC_STATUS_REPORT);
+            break; // Set as true
+        case CMD_CYCLE_START:
+            bit_true_atomic(sys.execute, EXEC_CYCLE_START);
+            break; // Set as true
+        case CMD_FEED_HOLD:
+            bit_true_atomic(sys.execute, EXEC_FEED_HOLD);
+            break; // Set as true
+        case CMD_RESET:
+            mc_reset();
+            break; // Call motion control reset routine.
+        default:
+            ret = data;
+            break;
+    }
+
 
     RXLED1;
     rx_led_pulse = TX_RX_LED_PULSE_MS;
