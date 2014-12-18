@@ -60,7 +60,7 @@ i2c_retry:
 
 
     //Start transmitted now transmit SLA+W
-    TWDR = addr | TW_WRITE; // 0010 000 0 = 0x10 for LTC2655 16bit
+    TWDR = addr | TW_WRITE; // 0010 000 0 = 0x20 for LTC2655 16bit
 
     //Clear TWINT flag to start transmission
     TWCR = (1<<TWINT) | (1<<TWEN);
@@ -76,7 +76,7 @@ i2c_retry:
 
 #if 1
     //LTC2655_CMD_WRITEDACA
-    TWDR = 0x00;
+    TWDR = 0x30;
 #else
     //LTC2655_CMD_WRITEDACB
     TWDR = 0x01;
@@ -97,7 +97,7 @@ i2c_retry:
         goto i2c_quit;
 
     //load high data byte into TWDR
-    TWDR =(value >> 8) & 0x0F; // (D15.D14.D13.D12.D11.D10.D9.D8)
+    TWDR =(value >> 8) & 0xFF; // (D15.D14.D13.D12.D11.D10.D9.D8)
 
     //Clear TWINT flag to start transmission
     TWCR = (1<<TWINT) | (1<<TWEN);
@@ -110,7 +110,7 @@ i2c_retry:
         goto i2c_quit;
 
     //load low data byte into TWDR
-    TWDR = (value&0x0F)<<8; // (D7.D6.D5.D4.D3.D2.D1.D0)
+    TWDR = (value&0xFF); // (D7.D6.D5.D4.D3.D2.D1.D0)
 
     //Clear TWINT flag to start transmission
     TWCR = (1<<TWINT) | (1<<TWEN);

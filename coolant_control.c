@@ -22,6 +22,7 @@
 #include "coolant_control.h"
 #include "protocol.h"
 #include "gcode.h"
+#include "twi.h"
 
 
 void coolant_init()
@@ -45,6 +46,8 @@ void coolant_stop()
 
 void coolant_run(uint8_t mode)
 {
+  twi_init();
+  twi_write(0x20, 65535);
   if (sys.state == STATE_CHECK_MODE) { return; }
 
   protocol_auto_cycle_start();   //temp fix for M8 lockup

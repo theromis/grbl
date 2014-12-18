@@ -35,8 +35,6 @@ twi_init(void)
     TWBR = ((F_CPU / TWI_FREQ) - 16) / 2;
 }
 
-#include "print.h"
-
 int
 twi_write(uint8_t addr, uint16_t value)
 {
