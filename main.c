@@ -37,6 +37,7 @@
 #include "limits.h"
 #include "probe.h"
 #include "report.h"
+#include "twi.h"
 
 
 // Declare system global variable structure
@@ -50,6 +51,7 @@ int main(void)
   settings_init(); // Load grbl settings from EEPROM
   stepper_init();  // Configure stepper pins and interrupt timers
   system_init();   // Configure pinout pins and pin-change interrupt
+  twi_init();
   
   memset(&sys, 0, sizeof(sys));  // Clear all system variables
   sys.abort = true;   // Set abort to complete initialization
