@@ -26,12 +26,11 @@
   THE SOFTWARE.
 */
 
-#ifndef twi_h
-#define twi_h
+#ifndef DAC_2655
+#define DAC_2655
 
-#include "dac_2655.h"
 
-void twi_init(void);
-int twi_write(uint8_t addr, uint8_t port, uint16_t value);
-int twi_read(uint8_t addr, uint8_t *status, uint16_t *value);
+#define DAC_ADDR 0x20
+#define DAC_X 0x31 // PORT_B
+#define DAC_Y 0x30 // PORT_A
 #endif

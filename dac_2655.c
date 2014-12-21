@@ -38,7 +38,7 @@ twi_init(void)
 #include "print.h"
 
 int
-twi_write(uint8_t addr, uint16_t value)
+twi_write(uint8_t addr, uint8_t port, uint16_t value)
 {
     uint8_t ret=0xFF, retry=0;
 
