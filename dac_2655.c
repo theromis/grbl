@@ -75,15 +75,16 @@ i2c_retry:
         goto i2c_quit;
 
 #if 1
+    TWDR = port;
+#else
     //LTC2655_CMD_WRITEDACA
     TWDR = 0x30;
-#else
     //LTC2655_CMD_WRITEDACB
-    TWDR = 0x01;
+    TWDR = 0x31;
     //LTC2655_CMD_WRITEDACC
-    TWDR = 0x02;
+    TWDR = 0x32;
     //LTC2655_CMD_WRITEDACD
-    TWDR = 0x03;
+    TWDR = 0x33;
 #endif
 
     //Clear TWINT flag to start transmission
