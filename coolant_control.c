@@ -53,6 +53,7 @@ void coolant_run(uint8_t mode)
   if (mode == COOLANT_FLOOD_ENABLE) {
   twi_write(DAC_ADDR, DAC_X, 65535);
   twi_write(DAC_ADDR, DAC_Y, 65535);
+  twi_write(DAC_ADDR, DAC_I, 65535);
     COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
 
   #ifdef ENABLE_M7  
@@ -63,6 +64,7 @@ void coolant_run(uint8_t mode)
   } else {
       twi_write(DAC_ADDR, DAC_X, 0);
       twi_write(DAC_ADDR, DAC_Y, 0);
+      twi_write(DAC_ADDR, DAC_I, 0);
       coolant_stop();
   }
 }
