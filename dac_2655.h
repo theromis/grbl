@@ -31,8 +31,8 @@
 
 
 #define DAC_ADDR 0x20
-#define DAC_Y 0x30 // PORT_A
-#define DAC_X 0x31 // PORT_B
+#define DAC_X 0x30 // PORT_A
+#define DAC_Y 0x31 // PORT_B
 #define DAC_Z 0x32 // PORT_C
 #define DAC_I 0x33 // PORT_D
 #endif

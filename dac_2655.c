@@ -26,6 +26,7 @@
 
 #include <compat/twi.h>
 #include "system.h"
+#include "twi.h"
 
 #define TWI_FREQ 100000L
 void
@@ -33,6 +34,10 @@ twi_init(void)
 {
     TWSR &= (~(1<<TWPS1))|(~(1<<TWPS0)); // Prescaler as 1
     TWBR = ((F_CPU / TWI_FREQ) - 16) / 2;
+
+    twi_write(DAC_ADDR, DAC_X, 32767);
+    twi_write(DAC_ADDR, DAC_Y, 32767);
+    twi_write(DAC_ADDR, DAC_I, 32767);
 }
 
 #include "print.h"

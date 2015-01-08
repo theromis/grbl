@@ -64,7 +64,7 @@ void coolant_run(uint8_t mode)
   } else {
       twi_write(DAC_ADDR, DAC_X, 0);
       twi_write(DAC_ADDR, DAC_Y, 0);
-      twi_write(DAC_ADDR, DAC_I, 0);
+//      twi_write(DAC_ADDR, DAC_I, 0);
       coolant_stop();
   }
 }

@@ -31,7 +31,12 @@
 #include "planner.h"
 #include "probe.h"
 
+#include "dac_2655.h"
+#include "twi.h"
+//#define PRINT
+#ifdef PRINT
 #include "print.h"
+#endif
 
 
 // Some useful constants.
@@ -376,7 +381,7 @@ ISR(TIMER1_COMPA_vect)
     st.counter_x -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
     else { sys.position[X_AXIS]++; }
-#if 1
+#ifdef PRINT
   printPgmString(PSTR(" X: "));
   printInteger(sys.position[X_AXIS]);
   printPgmString(PSTR(" Y  "));
@@ -385,6 +390,7 @@ ISR(TIMER1_COMPA_vect)
   printInteger(sys.position[Z_AXIS]);
   printPgmString(PSTR("\r\n"));
 #endif
+  twi_write(DAC_ADDR, DAC_X, sys.position[X_AXIS]);
   }
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
     st.counter_y += st.steps[Y_AXIS];
@@ -396,7 +402,7 @@ ISR(TIMER1_COMPA_vect)
     st.counter_y -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
     else { sys.position[Y_AXIS]++; }
-#if 1
+#ifdef PRINT
   printPgmString(PSTR(" X  "));
   printInteger(sys.position[X_AXIS]);
   printPgmString(PSTR(" Y: "));
@@ -405,6 +411,7 @@ ISR(TIMER1_COMPA_vect)
   printInteger(sys.position[Z_AXIS]);
   printPgmString(PSTR("\r\n"));
 #endif
+  twi_write(DAC_ADDR, DAC_Y, sys.position[Y_AXIS]);
   }
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
     st.counter_z += st.steps[Z_AXIS];
@@ -416,7 +423,7 @@ ISR(TIMER1_COMPA_vect)
     st.counter_z -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
     else { sys.position[Z_AXIS]++; }
-#if 1
+#ifdef PRINT
   printPgmString(PSTR(" X  "));
   printInteger(sys.position[X_AXIS]);
   printPgmString(PSTR(" Y  "));
