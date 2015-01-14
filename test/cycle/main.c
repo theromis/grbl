@@ -4,11 +4,12 @@
 
 
 #include <avr/io.h>
+#include "twi.h"
 
 
 int main(void)
 {
-
+#if 0
     while (1)
     {
 
@@ -30,4 +31,11 @@ int main(void)
         // reset the overflow flag
 
     }
+#else
+    uint16_t pos=0;
+    twi_init();
+    while (1)
+        twi_write(DAC_ADDR , DAC_X, pos++);
+#endif
+    return 0;
 }
